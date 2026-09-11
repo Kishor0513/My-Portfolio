@@ -20,6 +20,8 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BlogIndexPage, BlogPostPage } from './components/blog/BlogPages';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import Navbar from './components/ui/Navbar';
+import DemoWindow from './components/projects/DemoWindow';
+import { PROJECTS } from './data/projects';
 import Admin from './components/admin/Admin';
 import { getBlogPosts } from './data/blogStorage';
 const FloatingTechIcons = lazy(() => import('./components/ui/FloatingTechIcons'));
@@ -70,6 +72,7 @@ const HeroTypewriter = () => {
 function App() {
 	const [isSending, setIsSending] = useState(false);
 	const [submitStatus, setSubmitStatus] = useState(null);
+	const [activeDemo, setActiveDemo] = useState(null);
 	const formRef = useRef();
 
 	const pathname =
@@ -418,10 +421,10 @@ function App() {
 								<h2 className="text-4xl md:text-5xl font-bold mb-4 running-gradient inline-block">
 									Selected Work
 								</h2>
-								<p className="text-gray-400 text-lg max-w-2xl mx-auto">
-									Highlights of engineering and design.
-								</p>
-							</motion.div>
+							<p className="text-gray-400 text-lg max-w-2xl mx-auto">
+								Highlights of engineering and design.
+							</p>
+						</motion.div>
 
 							<motion.div
 								initial="hidden"
@@ -433,58 +436,7 @@ function App() {
 								}}
 								className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
 							>
-								{[
-									{
-										title: 'Chiya and Puff',
-										desc: 'A full-stack restaurant operations platform featuring QR-based table ordering, real-time dashboards for staff, and integrated billing. Built with Next.js and Prisma, it optimizes the dining experience from order to payment.',
-										link: 'https://github.com/Kishor0513/Chiya-and-Puff',
-										live: '#',
-										tags: ['Next.js', 'Prisma', 'PostgreSQL'],
-										image: '/assets/optimized/real_chiya_puff-700.jpg',
-										className: 'md:col-span-2',
-										hoverColor: '#f97316',
-									},
-									{
-										title: 'Social Media',
-										desc: '"Super Social" is a real-time networking app with features like disappearning stories, WebRTC video calls, and instant messaging. It uses Socket.IO and Prisma for a modern, fluid social experience.',
-										link: 'https://github.com/Kishor0513/Social-Media',
-										live: '#',
-										tags: ['React', 'Node.js', 'Socket.io'],
-										image: '/assets/social_media.svg',
-										className: 'md:col-span-1',
-										hoverColor: '#22d3ee',
-									},
-									{
-										title: 'Weavers',
-										desc: 'A comprehensive PHP-based E-commerce platform. It features full cart functionality, secure checkout, and back-office management, showcasing the power of traditional web stacks for scalable retail.',
-										link: 'https://github.com/Kishor0513/Weavers',
-										live: '#',
-										tags: ['PHP', 'MySQL', 'Ecommerce'],
-										image: '/assets/ecommerce.svg',
-										className: 'md:col-span-1',
-										hoverColor: '#15803d',
-									},
-									{
-										title: 'Dahlia Classification (FYP)',
-										desc: 'My Final Year Project: An AI-driven application that classifies Dahlia flower types using a pre-trained VGG16 CNN model. This Flask web app provides high-confidence results by analyzing flower image data in real-time.',
-										link: 'https://github.com/Kishor0513/App',
-										live: '#',
-										tags: ['Python', 'CNN', 'Deep Learning'],
-										image: '/assets/dahlia_classification.svg',
-										className: 'md:col-span-1',
-										hoverColor: '#a855f7',
-									},
-									{
-										title: 'Personal Blog',
-										desc: 'A minimal, blazingly fast personal blog designed for performance and reading comfort. It serves as my primary space for sharing engineering insights and tutorials with the development community.',
-										link: 'https://github.com/Kishor0513/Blog',
-										live: '#',
-										tags: ['Next.js', 'Vercel', 'Blog'],
-										image: '/assets/portfolio.svg',
-										className: 'md:col-span-1 lg:col-span-1',
-										hoverColor: '#ec4899',
-									},
-								].map((project, i) => (
+								{PROJECTS.map((project, i) => (
 									<motion.div
 										key={i}
 										whileHover={{ y: -5, scale: 1.01 }}
@@ -538,7 +490,15 @@ function App() {
 													{project.desc}
 												</p>
 											</div>
-											<div className="flex items-center gap-4 mt-4">
+											<div className="flex items-center gap-2 mt-4 flex-wrap">
+												{project.demoUrl && (
+													<button
+														onClick={() => setActiveDemo(project)}
+														className="flex items-center justify-center gap-2 text-sm font-semibold text-dark bg-primary px-5 py-2.5 rounded-xl hover:scale-[1.03] transition-all"
+													>
+														Open Demo
+													</button>
+												)}
 												<a
 													href={project.link}
 													target="_blank"
@@ -547,7 +507,7 @@ function App() {
 												>
 													View Code
 												</a>
-												{project.live !== '#' && (
+												{project.live !== '#' && !project.demoUrl && (
 													<a
 														href={project.live}
 														target="_blank"
@@ -562,8 +522,9 @@ function App() {
 									</motion.div>
 								))}
 							</motion.div>
-						</div>
-					</section>
+					</div>
+				</section>
+				<DemoWindow project={activeDemo} onClose={() => setActiveDemo(null)} />
 
 					{/* Blog Preview Section */}
 					<section

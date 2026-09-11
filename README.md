@@ -4,13 +4,13 @@ A modern, responsive portfolio website showcasing my work as a Full Stack Develo
 
 **Live Site**: [kishorchaudhary.com.np](https://www.kishorchaudhary.com.np)
 
-![Hero Section](assets/myphoto.webp)
+![Portfolio Home](public/assets/home-screenshot.jpg)
 
 ## Features
 
 - **Photo Background Hero**: Full-screen personal photo with overlay and floating tech stack icons
 - **Animated Progress Bars**: Skills section with scroll-triggered progress bars
-- **Project Showcase**: Filterable project cards with custom SVG illustrations and preview images
+- **Project Showcase**: Project cards with real images; live-deployed projects open in an embedded demo window with real GitHub code browsing
 - **Experience Timeline**: Interactive timeline component with scroll animations
 - **Contact Form**: EmailJS-powered contact form with validation and success feedback
 - **Performance Optimized**: Minimal CSS (~36KB gzipped), GPU-accelerated animations, lazy-loaded images
@@ -89,7 +89,7 @@ Alternatively, run `deploy.ps1` (PowerShell on Windows) which automates these st
 - **Color Palette**: Deep violet/black background (`#0f0518`) with lavender primary (`#bfa8ff`) and pink secondary (`#ff9ce6`)
 - **Glassmorphism**: Frosted glass surfaces via `backdrop-filter: blur()` with subtle border highlights
 - **Animations**: Custom cubic-bezier easing, staggered entrance sequences, scroll-triggered reveals
-- **Typography**: Inter (body), Outfit (headings), Space Grotesk (display)
+- **Typography**: Inter (body), Plus Jakarta Sans (headings), JetBrains Mono (code)
 
 ## Contact
 

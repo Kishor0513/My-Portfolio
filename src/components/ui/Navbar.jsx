@@ -17,7 +17,7 @@ const Navbar = () => {
 		{ name: 'Experience', href: '#experience' },
 		{ name: 'Skills', href: '#skills' },
 		{ name: 'Projects', href: '#projects' },
-		{ name: "Kishor's Blog", href: '/blog/' },
+		{ name: 'Blog', href: '/blog/' },
 	];
 
 	return (
@@ -35,11 +35,13 @@ const Navbar = () => {
 				href="#home"
 				className="flex items-center gap-3 group"
 			>
-				<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-					<span className="text-dark font-black text-base tracking-tight">KC</span>
+				<div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary via-[#8b5cf6] to-secondary flex items-center justify-center shadow-lg shadow-primary/25 ring-1 ring-white/20 group-hover:scale-105 group-hover:shadow-primary/40 transition-all">
+					<span className="text-white font-black text-lg tracking-tight">K</span>
+					<span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-dark" title="Available for work" />
 				</div>
-				<span className="text-xl font-bold text-white hidden sm:block">
-					Kishor<span className="text-primary">.</span>
+				<span className="hidden sm:flex flex-col leading-none gap-1">
+					<span className="text-[15px] font-bold text-white tracking-tight">Kishor Chaudhary</span>
+					<span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">Portfolio</span>
 				</span>
 			</motion.a>
 
@@ -51,7 +53,7 @@ const Navbar = () => {
 								key={link.name}
 								href={link.href}
 								className="text-[13px] uppercase tracking-widest font-semibold text-gray-400 hover:text-primary transition-all relative group"
-								style={{ fontFamily: 'Outfit, Inter, system-ui, sans-serif' }}
+								style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
 							>
 								{link.name}
 								<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" />
@@ -76,7 +78,7 @@ const Navbar = () => {
 							href="#contact"
 							whileHover={{ scale: 1.05 }}
 							whileTap={{ scale: 0.95 }}
-							style={{ '--hover-color': '#ea580c', fontFamily: 'Outfit, Inter, system-ui, sans-serif' }} className="px-6 py-2.5 bg-primary text-white font-bold rounded-full text-sm flex items-center gap-2 group shadow-lg shadow-primary/20 liquid-glass hover-glow"
+							style={{ '--hover-color': '#ea580c', fontFamily: 'Inter, system-ui, sans-serif' }} className="px-6 py-2.5 bg-primary text-white font-bold rounded-full text-sm flex items-center gap-2 group shadow-lg shadow-primary/20 liquid-glass hover-glow"
 						>
 							Let's Talk
 							<ArrowRight
@@ -126,7 +128,7 @@ const Navbar = () => {
 								transition={{ delay: i * 0.1 }}
 								className="text-4xl font-bold text-white hover:text-primary transition-colors"
 								style={{
-									fontFamily: 'Space Grotesk, Inter, system-ui, sans-serif',
+									fontFamily: 'Plus Jakarta Sans, Inter, system-ui, sans-serif',
 								}}
 								onClick={() => setMobileMenuOpen(false)}
 							>
@@ -141,7 +143,7 @@ const Navbar = () => {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.6 }}
-							style={{ '--hover-color': '#16a34a', fontFamily: 'Outfit, Inter, system-ui, sans-serif' }} className="mt-4 px-10 py-4 bg-primary text-dark font-bold rounded-full text-xl liquid-glass flex items-center gap-3 hover-glow"
+							style={{ '--hover-color': '#16a34a', fontFamily: 'Inter, system-ui, sans-serif' }} className="mt-4 px-10 py-4 bg-primary text-dark font-bold rounded-full text-xl liquid-glass flex items-center gap-3 hover-glow"
 						>
 							<Download size={20} />
 							Download CV

@@ -13,7 +13,9 @@ export default {
                 surface: "#1a0b2e" // Dark Purple Surface
             },
             fontFamily: {
-                sans: ['Inter', 'sans-serif'],
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
             }
         },
     },
