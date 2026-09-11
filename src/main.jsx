@@ -18,10 +18,6 @@ async function runServiceWorkerMigration() {
 		return;
 	}
 
-	if (localStorage.getItem(SW_MIGRATION_KEY) === 'done') {
-		return;
-	}
-
 	try {
 		const registrations = await navigator.serviceWorker.getRegistrations();
 		await Promise.all(

@@ -8,6 +8,7 @@ const cacheVersion = (() => {
 		return 'dev';
 	}
 })();
+
 const CACHE_NAME = `${CACHE_PREFIX}${cacheVersion}`;
 const urlsToCache = [
 	'/',
@@ -17,46 +18,56 @@ const urlsToCache = [
 	'/favicon.png',
 ];
 
-// Install service worker
 self.addEventListener('install', (event) => {
 	event.waitUntil(
-		caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)),
+		caches
+			.open(CACHE_NAME)
+			.then((cache) => cache.addAll(urlsToCache))
+			.then(() => self.skipWaiting()),
 	);
-	self.skipWaiting();
 });
 
-// Fetch assets
 self.addEventListener('fetch', (event) => {
+	if (event.request.method.toLowerCase() !== 'get') {
+		return;
+	}
+
 	if (event.request.mode === 'navigate') {
 		event.respondWith(
 			fetch(event.request)
 				.then((response) => {
-					if (!response || !response.ok) {
-						return response;
+					if (response && response.ok) {
+						const responseClone = response.clone();
+						caches
+							.open(CACHE_NAME)
+							.then((cache) => cache.put('/index.html', responseClone));
 					}
-					const responseClone = response.clone();
-					caches
-						.open(CACHE_NAME)
-						.then((cache) => cache.put('/index.html', responseClone));
 					return response;
 				})
-				.catch(() => caches.match('/index.html')),
+				.catch(() => caches.match('/index.html') || caches.match('/')),
 		);
 		return;
 	}
 
+	if (!event.request.url.startsWith(self.location.origin)) {
+		return;
+	}
+
 	event.respondWith(
-		caches.match(event.request).then((response) => {
-			// Cache hit - return response
-			if (response) {
+		fetch(event.request)
+			.then((response) => {
+				if (response && response.ok && response.type !== 'opaque') {
+					const responseClone = response.clone();
+					caches
+						.open(CACHE_NAME)
+						.then((cache) => cache.put(event.request, responseClone));
+				}
 				return response;
-			}
-			return fetch(event.request);
-		}),
+			})
+			.catch(() => caches.match(event.request)),
 	);
 });
 
-// Activate and clean up old caches
 self.addEventListener('activate', (event) => {
 	event.waitUntil(
 		caches.keys().then((cacheNames) => {
