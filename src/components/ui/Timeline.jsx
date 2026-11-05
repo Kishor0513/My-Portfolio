@@ -42,7 +42,7 @@ const Timeline = () => {
 	const experiences = [
 		{
 			type: 'work',
-			title: 'E-commerce Web Executive',
+			title: 'E-commerce Operation Executive',
 			company: 'Felt and Yarn Pvt. Ltd',
 			period: '2025 - Present',
 			hoverColor: '#d97706',
