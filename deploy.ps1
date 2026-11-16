@@ -9,9 +9,9 @@ if (!(Test-Path "src/main.jsx")) {
     exit 1
 }
 
-# 2. Run Build
+# 2. Run Build (includes static JSON-LD injection for blog posts)
 Write-Host "📦 Building project..." -ForegroundColor Magenta
-npm run build
+npm run build:with-jsonld
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Build failed!" -ForegroundColor Red

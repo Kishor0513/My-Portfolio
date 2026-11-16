@@ -170,23 +170,27 @@ export const blogIndexPath = '/blog/';
 export const getBlogPostBySlug = (slug) =>
 	blogPosts.find((post) => post.slug === slug);
 
-export const buildBlogArticleJsonLd = (post) => ({
-	'@context': 'https://schema.org',
-	'@type': 'BlogPosting',
-	'@id': buildAbsoluteUrl(post.path),
-	headline: post.title,
-	description: post.description,
-	author: {
-		'@type': 'Person',
-		name: SITE_NAME,
-	},
-	publisher: {
-		'@type': 'Person',
-		name: SITE_NAME,
-	},
-	datePublished: post.publishedAt,
-	dateModified: post.updatedAt,
-	mainEntityOfPage: buildAbsoluteUrl(post.path),
-	keywords: post.tags.join(', '),
-	url: buildAbsoluteUrl(post.path),
-});
+export const buildBlogArticleJsonLd = (post) => {
+	const url = buildAbsoluteUrl(post.path || `/blog/${post.slug}/`);
+
+	return {
+		'@context': 'https://schema.org',
+		'@type': 'BlogPosting',
+		'@id': url,
+		headline: post.title,
+		description: post.description,
+		author: {
+			'@type': 'Person',
+			name: SITE_NAME,
+		},
+		publisher: {
+			'@type': 'Person',
+			name: SITE_NAME,
+		},
+		datePublished: post.publishedAt,
+		dateModified: post.updatedAt || post.publishedAt,
+		mainEntityOfPage: url,
+		keywords: (post.tags || []).join(', '),
+		url,
+	};
+};

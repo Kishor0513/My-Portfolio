@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, ChevronDown, ChevronRight, Copy, ExternalLink, FileCode2, FolderOpen, Github, Loader2, RotateCw } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const treeCache = new Map();
@@ -102,6 +102,8 @@ export default function DemoWindow({ project, onClose }) {
 	const [ghFileLoading, setGhFileLoading] = useState(false);
 	const [open, setOpen] = useState(new Set());
 	const [reloadKey, setReloadKey] = useState(0);
+	const dialogRef = useRef(null);
+	const onCloseRef = useRef(onClose);
 
 	const meta = useMemo(() => parseRepo(project?.link), [project?.link]);
 	const bundled = useMemo(() => project?.files ?? [], [project]);
@@ -150,11 +152,65 @@ export default function DemoWindow({ project, onClose }) {
 	}, [project?.id, importAll]);
 
 	useEffect(() => {
-		const fn = (e) => e.key === 'Escape' && onClose();
-		window.addEventListener('keydown', fn);
-		document.body.style.overflow = project ? 'hidden' : '';
-		return () => { window.removeEventListener('keydown', fn); document.body.style.overflow = ''; };
-	}, [project, onClose]);
+		onCloseRef.current = onClose;
+	}, [onClose]);
+
+	useEffect(() => {
+		if (!project) return undefined;
+
+		const previouslyFocused = document.activeElement;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+
+		const focusableSelector =
+			'a[href], button:not([disabled]), iframe, input, textarea, select, [tabindex]:not([tabindex="-1"])';
+		const focusTimer = window.setTimeout(() => {
+			const first = dialogRef.current?.querySelector(focusableSelector);
+			first?.focus();
+		}, 50);
+
+		const handleKeyDown = (event) => {
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				onCloseRef.current?.();
+				return;
+			}
+
+			if (event.key !== 'Tab' || !dialogRef.current) return;
+
+			const focusable = Array.from(
+				dialogRef.current.querySelectorAll(focusableSelector),
+			).filter((element) => element.getClientRects().length > 0);
+
+			if (focusable.length === 0) {
+				event.preventDefault();
+				return;
+			}
+
+			const first = focusable[0];
+			const last = focusable[focusable.length - 1];
+			const focusIsInside = dialogRef.current.contains(document.activeElement);
+
+			if (event.shiftKey) {
+				if (!focusIsInside || document.activeElement === first) {
+					event.preventDefault();
+					last.focus();
+				}
+			} else if (!focusIsInside || document.activeElement === last) {
+				event.preventDefault();
+				first.focus();
+			}
+		};
+
+		document.addEventListener('keydown', handleKeyDown);
+
+		return () => {
+			window.clearTimeout(focusTimer);
+			document.removeEventListener('keydown', handleKeyDown);
+			document.body.style.overflow = previousOverflow;
+			previouslyFocused?.focus?.();
+		};
+	}, [project]);
 
 	const openGhFile = async (path) => {
 		if (!meta) return;
@@ -174,7 +230,7 @@ export default function DemoWindow({ project, onClose }) {
 	return createPortal(
 		<AnimatePresence>
 			{project && (
-				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] overflow-y-auto bg-black/75 backdrop-blur-md p-3 md:p-6" onClick={onClose}>
+				<motion.div role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] overflow-y-auto bg-black/75 backdrop-blur-md p-3 md:p-6" onClick={onClose}>
 					{minimized ? (
 						<div className="min-h-full flex items-center justify-center">
 							<motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} onClick={(e) => { e.stopPropagation(); setMinimized(false); }} className="flex items-center gap-3 bg-[#16161a] border border-white/15 rounded-full pl-2 pr-5 py-1.5 shadow-2xl">
@@ -185,6 +241,10 @@ export default function DemoWindow({ project, onClose }) {
 					) : (
 						<div className="min-h-full flex items-start sm:items-center justify-center py-2">
 							<motion.div
+								ref={dialogRef}
+								role="dialog"
+								aria-modal="true"
+								aria-label={`${project.title} demo window`}
 								initial={{ scale: 0.92, opacity: 0, y: 24 }}
 								animate={{ scale: 1, opacity: 1, y: 0 }}
 								exit={{ scale: 0.94, opacity: 0, y: 16 }}
@@ -196,7 +256,7 @@ export default function DemoWindow({ project, onClose }) {
 									<Traffic onClose={onClose} onMin={() => setMinimized(true)} onMax={() => setMaximized((m) => !m)} maximized={maximized} />
 									<div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 mx-auto">
 										{[['demo', 'Live demo'], ['code', 'Real code']].map(([k, l]) => (
-											<button key={k} onClick={() => setTab(k)} className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition ${tab === k ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}>{l}</button>
+											<button key={k} onClick={() => setTab(k)} className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition ${tab === k ? 'bg-primary text-dark' : 'text-gray-400 hover:text-white'}`}>{l}</button>
 										))}
 									</div>
 									<a href={project.link} target="_blank" rel="noreferrer" title="Open repo on GitHub" className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"><Github size={15} /></a>
@@ -205,7 +265,7 @@ export default function DemoWindow({ project, onClose }) {
 								{tab === 'demo' ? (
 									<div className={`flex flex-col min-h-0 bg-[#0b0b0e] ${maximized ? 'flex-1' : 'h-[62vh] md:h-[540px] max-h-[calc(90vh-48px)]'}`}>
 									<div className="flex items-center gap-2 px-3 h-10 shrink-0 bg-[#1c1c1f] border-b border-white/10 text-[11px]">
-										<button onClick={() => setReloadKey((k) => k + 1)} title="Reload" className="p-1 text-gray-500 hover:text-white shrink-0"><RotateCw size={12} /></button>
+										<button onClick={() => setReloadKey((k) => k + 1)} title="Reload" className="p-1 text-gray-400 hover:text-white shrink-0"><RotateCw size={12} /></button>
 										<div className="hidden sm:flex flex-1 items-center gap-1.5 bg-black/40 border border-white/10 rounded-md px-2.5 py-1 font-mono text-gray-300 truncate">
 											<span className="text-emerald-400 text-[10px]">🔒</span>
 											<span className="truncate">{demoUrl}</span>
@@ -213,7 +273,13 @@ export default function DemoWindow({ project, onClose }) {
 										<span className="text-[10px] bg-green-500/15 text-green-300 px-2 py-0.5 rounded-full shrink-0">● LIVE</span>
 									</div>
 									<div className="flex-1 min-h-0 overflow-auto p-3 md:p-4" key={reloadKey}>
-										<iframe src={demoUrl} title={`${project.title} live`} className="w-full h-full min-h-[300px] rounded-xl bg-white border border-white/10" loading="lazy" />
+										<iframe
+											src={demoUrl}
+											title={`${project.title} live`}
+											className="w-full h-full min-h-[300px] rounded-xl bg-white border border-white/10"
+											loading="lazy"
+											sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+										/>
 									</div>
 									</div>
 								) : (
@@ -223,7 +289,7 @@ export default function DemoWindow({ project, onClose }) {
 												<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search files…" className="w-full bg-black/30 rounded-lg px-2.5 py-2 text-[11px] text-white outline-none border border-white/10 focus:border-primary/50" />
 											</div>
 											<div className="flex-1 min-h-0 overflow-auto px-1.5 pb-2">
-												<div className="px-1.5 py-1 text-[10px] font-bold text-gray-500 uppercase">Curated</div>
+												<div className="px-1.5 py-1 text-[10px] font-bold text-gray-400 uppercase">Curated</div>
 												{filteredBundled.map((f) => {
 													const i = bundled.indexOf(f);
 													return (
@@ -233,7 +299,7 @@ export default function DemoWindow({ project, onClose }) {
 													);
 												})}
 												<div className="px-1.5 pt-2 pb-1 flex items-center justify-between">
-													<span className="text-[10px] font-bold text-gray-500 uppercase">GitHub — all files</span>
+													<span className="text-[10px] font-bold text-gray-400 uppercase">GitHub — all files</span>
 													{ghLoading && <Loader2 size={11} className="animate-spin text-primary" />}
 												</div>
 												{ghError && <div className="mx-1.5 text-[10px] text-amber-300/90 bg-amber-400/10 rounded-md p-2">{ghError}</div>}
@@ -255,7 +321,7 @@ export default function DemoWindow({ project, onClose }) {
 											</div>
 											<div className="flex-1 min-h-0 overflow-auto">
 												{ghFileLoading ? (
-													<div className="h-full flex items-center justify-center text-gray-500 text-xs gap-2"><Loader2 size={14} className="animate-spin" /> Loading real file…</div>
+													<div className="h-full flex items-center justify-center text-gray-400 text-xs gap-2"><Loader2 size={14} className="animate-spin" /> Loading real file…</div>
 												) : (
 													<pre className="text-[11.5px] leading-5 font-mono p-4 pr-6 flex">
 														<code className="text-gray-600 text-right pr-4 select-none shrink-0">{editorCode.split('\n').map((_, i) => <span key={i} className="block">{i + 1}</span>)}</code>
@@ -264,7 +330,7 @@ export default function DemoWindow({ project, onClose }) {
 												)}
 											</div>
 											<div className="sm:hidden border-t border-white/10 p-2 shrink-0">
-												<div className="text-[10px] text-gray-500 font-mono mb-1">Files</div>
+												<div className="text-[10px] text-gray-400 font-mono mb-1">Files</div>
 												<div className="flex gap-1.5 overflow-x-auto">
 													{filteredBundled.map((f) => (
 														<button key={f.path} onClick={() => { setActiveFile(bundled.indexOf(f)); setGhFile(null); }} className="shrink-0 text-[10px] font-mono px-2 py-1 rounded bg-white/5 text-gray-300">{f.path.split('/').pop()}</button>

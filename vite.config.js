@@ -36,6 +36,7 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: resolve(__dirname, 'src/index.html'),
+				notFound: resolve(__dirname, 'src/404.html'),
 				admin: resolve(__dirname, 'src/admin/index.html'),
 				blog: resolve(__dirname, 'src/blog/index.html'),
 				'blog/seo-for-react-portfolios': resolve(

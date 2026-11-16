@@ -1,34 +1,67 @@
 import emailjs from '@emailjs/browser';
-import { AnimatePresence, motion } from 'framer-motion';
+import {
+	AnimatePresence,
+	motion,
+	useReducedMotion,
+	useScroll,
+	useTransform,
+} from 'framer-motion';
 import {
 	ArrowRight,
 	ArrowUp,
 	ChevronDown,
-	Cpu,
 	Download,
 	ExternalLink,
 	Github,
-	Globe,
 	Instagram,
 	Link,
 	Linkedin,
 	Mail,
 	MapPin,
-	Server,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { BlogIndexPage, BlogPostPage } from './components/blog/BlogPages';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import Navbar from './components/ui/Navbar';
+import NotFoundPage from './components/ui/NotFoundPage';
+import ScrollProgress from './components/ui/ScrollProgress';
 import DemoWindow from './components/projects/DemoWindow';
 import { PROJECTS } from './data/projects';
-import Admin from './components/admin/Admin';
 import { getBlogPosts } from './data/blogStorage';
+import {
+	EASE_OUT,
+	fadeUp,
+	hoverLift,
+	staggerContainer,
+	staggerItem,
+	VIEWPORT,
+} from './lib/motion';
+import useSpotlight from './lib/useSpotlight';
+
 const FloatingTechIcons = lazy(() => import('./components/ui/FloatingTechIcons'));
 const SpaceBackground = lazy(() => import('./components/ui/SpaceBackground'));
 const Timeline = lazy(() => import('./components/ui/Timeline'));
+const Skills = lazy(() => import('./components/ui/Skills'));
+const BlogIndexPage = lazy(() =>
+	import('./components/blog/BlogPages').then((module) => ({
+		default: module.BlogIndexPage,
+	})),
+);
+const BlogPostPage = lazy(() =>
+	import('./components/blog/BlogPages').then((module) => ({
+		default: module.BlogPostPage,
+	})),
+);
+const Admin = lazy(() => import('./components/admin/Admin'));
 
-
+const RouteFallback = () => (
+	<div className="flex min-h-svh items-center justify-center bg-dark text-white">
+		<div
+			className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
+			role="status"
+			aria-label="Loading page"
+		/>
+	</div>
+);
 
 const HERO_ROLES = [
 	'Full Stack Developer',
@@ -37,12 +70,77 @@ const HERO_ROLES = [
 	'Backend Engineer',
 ];
 
+const HERO_STAGGER = {
+	hidden: {},
+	visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } },
+};
+
+const HERO_WORD = (delay) => ({
+	hidden: { y: '110%' },
+	visible: {
+		y: 0,
+		transition: { duration: 0.85, ease: EASE_OUT, delay },
+	},
+});
+
+const HERO_FADE = {
+	hidden: { opacity: 0, y: 16 },
+	visible: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 0.6, ease: EASE_OUT },
+	},
+};
+
+const HeroBackdrop = () => {
+	const ref = useRef(null);
+	const shouldReduceMotion = useReducedMotion();
+	const { scrollYProgress } = useScroll({
+		target: ref,
+		offset: ['start start', 'end start'],
+	});
+	const y = useTransform(scrollYProgress, [0, 1], [0, 48]);
+	const scale = useTransform(scrollYProgress, [0, 1], [1.06, 1.14]);
+	const opacity = useTransform(scrollYProgress, [0, 0.9], [0.4, 0.18]);
+
+	return (
+		<div
+			ref={ref}
+			className="pointer-events-none absolute inset-0 overflow-hidden"
+		>
+			<motion.div
+				className="absolute inset-0"
+				style={
+					shouldReduceMotion ? { opacity: 0.4 } : { y, scale, opacity }
+				}
+			>
+				<picture>
+					<source
+						srcSet="/assets/myphoto.webp"
+						type="image/webp"
+					/>
+					<img
+						src="/assets/myphoto.png"
+						alt=""
+						className="h-full w-full object-cover"
+						aria-hidden="true"
+						decoding="async"
+					/>
+				</picture>
+			</motion.div>
+		</div>
+	);
+};
+
 const HeroTypewriter = () => {
 	const [roleIdx, setRoleIdx] = useState(0);
 	const [displayed, setDisplayed] = useState('');
 	const [deleting, setDeleting] = useState(false);
+	const shouldReduceMotion = useReducedMotion();
 
 	useEffect(() => {
+		if (shouldReduceMotion) return undefined;
+
 		const currentRole = HERO_ROLES[roleIdx];
 		let timeout;
 		if (!deleting && displayed.length < currentRole.length) {
@@ -59,12 +157,16 @@ const HeroTypewriter = () => {
 			setRoleIdx((prev) => (prev + 1) % HERO_ROLES.length);
 		}
 		return () => clearTimeout(timeout);
-	}, [displayed, deleting, roleIdx]);
+	}, [displayed, deleting, roleIdx, shouldReduceMotion]);
 
 	return (
-		<span>
-			<span className="text-primary font-medium">{displayed}</span>
-			<span className="text-primary/60 animate-pulse">|</span>
+		<span className="inline-flex min-w-[20ch] justify-center">
+			<span className="font-medium text-primary">
+				{shouldReduceMotion ? HERO_ROLES[0] : displayed}
+			</span>
+			{!shouldReduceMotion && (
+				<span className="animate-pulse text-primary/60">|</span>
+			)}
 		</span>
 	);
 };
@@ -74,34 +176,63 @@ function App() {
 	const [submitStatus, setSubmitStatus] = useState(null);
 	const [activeDemo, setActiveDemo] = useState(null);
 	const formRef = useRef();
+	const { onPointerMove: handleSpotlight } = useSpotlight();
 
 	const pathname =
 		typeof window !== 'undefined'
 			? window.location.pathname.replace(/\/+$/, '') || '/'
 			: '/';
 
-	if (pathname === '/blog' || pathname === '/blog/') {
-		return <BlogIndexPage />;
+	const isHome = pathname === '/' || pathname === '/index.html';
+	const isBlogIndex = pathname === '/blog';
+	const isBlogPost = pathname.startsWith('/blog/');
+	const isAdmin = pathname === '/admin';
+
+	if (isBlogIndex) {
+		return (
+			<ErrorBoundary>
+				<Suspense fallback={<RouteFallback />}>
+					<BlogIndexPage />
+				</Suspense>
+			</ErrorBoundary>
+		);
 	}
 
-	if (pathname.startsWith('/blog/')) {
+	if (isBlogPost) {
 		const slug = pathname.split('/').filter(Boolean)[1];
-		return <BlogPostPage post={{ slug }} />;
+		return (
+			<ErrorBoundary>
+				<Suspense fallback={<RouteFallback />}>
+					<BlogPostPage post={{ slug }} />
+				</Suspense>
+			</ErrorBoundary>
+		);
 	}
 
-	if (pathname === '/admin') {
-		return <Admin />;
+	if (isAdmin) {
+		return (
+			<ErrorBoundary>
+				<Suspense fallback={<RouteFallback />}>
+					<Admin />
+				</Suspense>
+			</ErrorBoundary>
+		);
 	}
 
-	// Animation variants
-	const fadeIn = {
-		hidden: { opacity: 0, y: 20 },
-		visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-	};
+	if (!isHome) {
+		return <NotFoundPage />;
+	}
 
 	return (
 		<ErrorBoundary>
-			<div className="bg-dark min-h-screen text-white selection:bg-primary/30 font-sans">
+			<ScrollProgress />
+			<a
+				href="#main-content"
+				className="absolute left-4 top-4 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-2 text-sm font-bold text-dark transition-transform focus:translate-y-0"
+			>
+				Skip to content
+			</a>
+			<div className="min-h-svh bg-dark font-sans text-white selection:bg-primary/30">
 				<Navbar />
 
 				<div className="fixed inset-0 z-0 pointer-events-none">
@@ -110,25 +241,18 @@ function App() {
 					</Suspense>
 				</div>
 
-				<main className="relative z-10" style={{ transform: 'translateZ(0)' }}>
+				<main
+					id="main-content"
+					className="relative z-10"
+					style={{ transform: 'translateZ(0)' }}
+				>
 					{/* Hero Section */}
 					<section
 						id="home"
-						className="relative min-h-screen flex flex-col justify-center px-6 overflow-hidden pt-20"
+						className="relative flex min-h-svh scroll-mt-24 flex-col justify-center overflow-hidden px-6 pt-20"
 					>
 						{/* Full Background Image */}
-						<div className="absolute inset-0 pointer-events-none overflow-hidden">
-							<picture>
-								<source srcSet="/assets/myphoto.webp" type="image/webp" />
-								<img
-									src="/assets/myphoto.png"
-									alt=""
-									className="w-full h-full object-cover opacity-40"
-									aria-hidden="true"
-									decoding="async"
-								/>
-							</picture>
-						</div>
+						<HeroBackdrop />
 
 						{/* Gradient Overlays */}
 						<div className="absolute inset-0 bg-gradient-to-b from-dark/10 via-dark/30 to-dark pointer-events-none" />
@@ -141,19 +265,42 @@ function App() {
 						</Suspense>
 
 						<div className="relative z-10 w-full">
-							<div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[calc(100vh-5rem)] px-4 pt-16 md:pt-24" style={{ transform: 'translateZ(0)' }}>
+							<div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[calc(100svh-5rem)] px-4 pt-16 md:pt-24" style={{ transform: 'translateZ(0)' }}>
 								<div className="max-w-2xl mx-auto">
 									{/* Name */}
 									<motion.h1
-										initial={{ opacity: 0, y: 40, scale: 0.96 }}
-										animate={{ opacity: 1, y: 0, scale: 1 }}
-										transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+										initial="hidden"
+										animate="visible"
+										variants={HERO_STAGGER}
 										className="font-black tracking-wide mb-4 leading-[1.1] drop-shadow-lg"
 									>
-										<span className="block text-2xl md:text-3xl text-gray-300 font-light mb-3 tracking-normal">I'm</span>
+										<motion.span
+											variants={HERO_FADE}
+											className="block text-2xl md:text-3xl text-gray-300 font-light mb-3 tracking-normal"
+										>
+											I'm
+										</motion.span>
 										<span className="flex flex-col sm:flex-row justify-center items-center sm:items-baseline gap-y-2 sm:gap-x-4 text-4xl sm:text-5xl md:text-7xl lg:text-8xl">
-											<span className="text-white">Kishor</span>
-											<span className="running-gradient pb-1">Chaudhary</span>
+											<span className="-my-1 block shrink-0 overflow-hidden py-1">
+												<motion.span
+													initial="hidden"
+													animate="visible"
+													variants={HERO_WORD(0.2)}
+													className="block text-white"
+												>
+													Kishor
+												</motion.span>
+											</span>
+											<span className="-my-1 block shrink-0 overflow-hidden py-1">
+												<motion.span
+													initial="hidden"
+													animate="visible"
+													variants={HERO_WORD(0.3)}
+													className="running-gradient block pb-1"
+												>
+													Chaudhary
+												</motion.span>
+											</span>
 										</span>
 									</motion.h1>
 
@@ -161,7 +308,7 @@ function App() {
 									<motion.div
 										initial={{ opacity: 0, y: 15 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ duration: 0.6, delay: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+										transition={{ duration: 0.6, delay: 0.6, ease: EASE_OUT }}
 										className="text-xl md:text-2xl lg:text-3xl text-gray-300 mb-4 font-light min-h-[2.5rem] drop-shadow"
 									>
 										<HeroTypewriter />
@@ -171,7 +318,7 @@ function App() {
 									<motion.p
 										initial={{ opacity: 0, y: 15 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ duration: 0.6, delay: 0.65, ease: [0.25, 0.1, 0.25, 1] }}
+										transition={{ duration: 0.6, delay: 0.72, ease: EASE_OUT }}
 										className="text-sm md:text-base text-gray-300 mb-6 max-w-lg mx-auto leading-relaxed drop-shadow"
 									>
 										Full-stack developer specializing in building modern,
@@ -183,14 +330,14 @@ function App() {
 									<motion.div
 										initial={{ opacity: 0, y: 15 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ duration: 0.6, delay: 0.85, ease: [0.25, 0.1, 0.25, 1] }}
+										transition={{ duration: 0.6, delay: 0.84, ease: EASE_OUT }}
 										className="flex flex-wrap gap-3 justify-center"
 									>
 										<motion.a
 											href="#projects"
 											whileHover={{ scale: 1.05 }}
 											whileTap={{ scale: 0.95 }}
-											style={{ '--hover-color': '#f59e0b' }} className="group px-6 py-3 bg-primary text-white font-semibold rounded-full shadow-lg shadow-primary/30 inline-flex items-center gap-2 hover-glow transition-all text-sm"
+											style={{ '--hover-color': '#f59e0b' }} className="group px-6 py-3 bg-primary text-dark font-semibold rounded-full shadow-lg shadow-primary/30 inline-flex items-center gap-2 hover-glow transition-all text-sm"
 										>
 											View Projects
 											<ArrowRight
@@ -215,11 +362,13 @@ function App() {
 						</div>
 
 						{/* Scroll Indicator */}
-						<motion.div
+						<motion.button
+							type="button"
+							aria-label="Scroll to the experience section"
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 1.5, duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
-							style={{ '--hover-color': '#8b5cf6' }} className="absolute bottom-8 inset-x-0 mx-auto w-max flex flex-col items-center gap-2 text-gray-500 cursor-pointer hover-glow transition-all"
+							transition={{ delay: 1.5, duration: 1, ease: EASE_OUT }}
+							style={{ '--hover-color': '#8b5cf6' }} className="absolute bottom-8 inset-x-0 mx-auto w-max flex flex-col items-center gap-2 text-gray-400 hover-glow transition-all"
 							onClick={() =>
 								document
 									.getElementById('experience')
@@ -239,183 +388,37 @@ function App() {
 							>
 								<ChevronDown size={20} />
 							</motion.div>
-						</motion.div>
+						</motion.button>
 					</section>
 
-					<Timeline />
+					<Suspense fallback={<div className="min-h-64 py-24" aria-hidden="true" />}>
+						<Timeline />
+					</Suspense>
 
 					{/* 2. SKILLS SECTION */}
-					<section
-						id="skills"
-						className="py-32 px-6 relative bg-transparent overflow-hidden"
+					<Suspense
+						fallback={
+							<div
+								id="skills"
+								className="min-h-[36rem] scroll-mt-24 py-24"
+								aria-hidden="true"
+							/>
+						}
 					>
-						<div className="max-w-7xl mx-auto">
-							<motion.div
-								initial="hidden"
-								whileInView="visible"
-								viewport={{ once: false, margin: '-50px' }}
-								variants={fadeIn}
-								className="text-center mb-16"
-							>
-								<h2 className="text-4xl md:text-5xl font-bold mb-4 running-gradient inline-block">
-									Technical Expertise
-								</h2>
-								<p className="text-gray-400 text-lg max-w-2xl mx-auto">
-									Check out my social media and GitHub for more technical
-									projects and insights.
-								</p>
-							</motion.div>
-
-							<div className="grid md:grid-cols-3 gap-8">
-								{/* Frontend */}
-								<motion.div
-									whileHover={{ y: -5 }}
-									style={{ '--hover-color': '#3b82f6' }}
-									className="glass-panel p-8 rounded-2xl liquid-glass"
-								>
-									<div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 text-blue-400">
-										<Globe size={24} />
-									</div>
-									<h3 className="text-2xl font-bold mb-6">Frontend</h3>
-									<div className="space-y-4">
-										{[
-											{ name: 'React', level: 92 },
-											{ name: 'Next.js', level: 85 },
-											{ name: 'Three.js', level: 60 },
-											{ name: 'Tailwind CSS', level: 90 },
-											{ name: 'Framer Motion', level: 78 },
-											{ name: 'Redux', level: 75 },
-										].map((skill) => (
-											<motion.div
-												key={skill.name}
-												initial={{ opacity: 0, x: -10 }}
-												whileInView={{ opacity: 1, x: 0 }}
-												viewport={{ once: false, margin: '-50px' }}
-												transition={{ duration: 0.4 }}
-												className="space-y-1"
-											>
-												<div className="flex justify-between text-sm">
-													<span className="text-gray-300">{skill.name}</span>
-													<span className="text-primary">{skill.level}%</span>
-												</div>
-												<div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-													<motion.div
-														initial={{ width: 0 }}
-														whileInView={{ width: `${skill.level}%` }}
-														viewport={{ once: false, margin: '-50px' }}
-														transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-														className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
-													/>
-												</div>
-											</motion.div>
-										))}
-									</div>
-								</motion.div>
-
-								{/* Backend */}
-								<motion.div
-									whileHover={{ y: -5 }}
-									style={{ '--hover-color': '#22c55e' }}
-									className="glass-panel p-8 rounded-2xl liquid-glass"
-								>
-									<div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-6 text-green-400">
-										<Server size={24} />
-									</div>
-									<h3 className="text-2xl font-bold mb-6">Backend</h3>
-									<div className="space-y-4">
-										{[
-											{ name: 'Node.js', level: 88 },
-											{ name: 'Express', level: 85 },
-											{ name: 'MongoDB', level: 80 },
-											{ name: 'PostgreSQL', level: 75 },
-											{ name: 'GraphQL', level: 65 },
-											{ name: 'REST APIs', level: 90 },
-										].map((skill) => (
-											<motion.div
-												key={skill.name}
-												initial={{ opacity: 0, x: -10 }}
-												whileInView={{ opacity: 1, x: 0 }}
-												viewport={{ once: false, margin: '-50px' }}
-												transition={{ duration: 0.4 }}
-												className="space-y-1"
-											>
-												<div className="flex justify-between text-sm">
-													<span className="text-gray-300">{skill.name}</span>
-													<span className="text-green-400">{skill.level}%</span>
-												</div>
-												<div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-													<motion.div
-														initial={{ width: 0 }}
-														whileInView={{ width: `${skill.level}%` }}
-														viewport={{ once: false, margin: '-50px' }}
-														transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-														className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500"
-													/>
-												</div>
-											</motion.div>
-										))}
-									</div>
-								</motion.div>
-
-								{/* Tools & Arch */}
-								<motion.div
-									whileHover={{ y: -5 }}
-									style={{ '--hover-color': '#a78bfa' }}
-									className="glass-panel p-8 rounded-2xl liquid-glass"
-								>
-									<div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6 text-purple-400">
-										<Cpu size={24} />
-									</div>
-									<h3 className="text-2xl font-bold mb-6">Architecture</h3>
-									<div className="space-y-4">
-										{[
-											{ name: 'Docker', level: 82 },
-											{ name: 'AWS', level: 70 },
-											{ name: 'Git', level: 90 },
-											{ name: 'CI/CD', level: 75 },
-											{ name: 'Microservices', level: 68 },
-											{ name: 'Jest', level: 72 },
-										].map((skill) => (
-											<motion.div
-												key={skill.name}
-												initial={{ opacity: 0, x: -10 }}
-												whileInView={{ opacity: 1, x: 0 }}
-												viewport={{ once: false, margin: '-50px' }}
-												transition={{ duration: 0.4 }}
-												className="space-y-1"
-											>
-												<div className="flex justify-between text-sm">
-													<span className="text-gray-300">{skill.name}</span>
-													<span className="text-purple-400">{skill.level}%</span>
-												</div>
-												<div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-													<motion.div
-														initial={{ width: 0 }}
-														whileInView={{ width: `${skill.level}%` }}
-														viewport={{ once: false, margin: '-50px' }}
-														transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-														className="h-full rounded-full bg-gradient-to-r from-purple-400 to-purple-600"
-													/>
-												</div>
-											</motion.div>
-										))}
-									</div>
-								</motion.div>
-							</div>
-						</div>
-					</section>
+						<Skills />
+					</Suspense>
 
 					{/* 3. PROJECTS SECTION */}
 					<section
 						id="projects"
-						className="py-32 px-6"
+						className="scroll-mt-24 px-6 py-24"
 					>
 						<div className="max-w-7xl mx-auto">
 							<motion.div
 								initial="hidden"
 								whileInView="visible"
-								viewport={{ once: false, margin: '-50px' }}
-								variants={fadeIn}
+								viewport={VIEWPORT}
+								variants={fadeUp}
 								className="text-center mb-16"
 							>
 								<h2 className="text-4xl md:text-5xl font-bold mb-4 running-gradient inline-block">
@@ -429,27 +432,28 @@ function App() {
 							<motion.div
 								initial="hidden"
 								whileInView="visible"
-								viewport={{ once: false, margin: '-50px' }}
-								variants={{
-									hidden: {},
-									visible: { transition: { staggerChildren: 0.1 } },
-								}}
+								viewport={VIEWPORT}
+								variants={staggerContainer(0.09)}
 								className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
 							>
-								{PROJECTS.map((project, i) => (
+								{PROJECTS.map((project) => (
 									<motion.div
-										key={i}
-										whileHover={{ y: -5, scale: 1.01 }}
-										variants={{
-											hidden: { opacity: 0, y: 30 },
-											visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-										}}
-										viewport={{ once: false, margin: '-50px' }}
+										key={project.id || project.title}
+										whileHover={hoverLift}
+										onPointerMove={handleSpotlight}
+										variants={staggerItem}
 										style={{ '--hover-color': project.hoverColor }}
-										className={`glass-card overflow-hidden group transition-all duration-500 transform flex flex-col bg-white/5 backdrop-blur-2xl ${project.className || ''}`}
+										className={`spotlight glass-card overflow-hidden group transition-all duration-500 transform flex flex-col bg-white/5 backdrop-blur-2xl ${project.className || ''}`}
 									>
+										<span
+											aria-hidden="true"
+											className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+											style={{
+												backgroundImage: `linear-gradient(90deg, transparent, ${project.hoverColor}, transparent)`,
+											}}
+										/>
 										<div
-											className={`relative overflow-hidden w-full ${project.className?.includes('md:col-span-2') ? 'h-[320px]' : 'h-[220px]'}`}
+											className={`relative overflow-hidden w-full ${project.className?.includes('md:col-span-2') ? 'h-[220px] md:h-[320px]' : 'h-[220px]'}`}
 										>
 											<img
 												src={project.image}
@@ -490,7 +494,7 @@ function App() {
 													{project.desc}
 												</p>
 											</div>
-											<div className="flex items-center gap-2 mt-4 flex-wrap">
+											<div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
 												{project.demoUrl && (
 													<button
 														onClick={() => setActiveDemo(project)}
@@ -529,14 +533,14 @@ function App() {
 					{/* Blog Preview Section */}
 					<section
 						id="blog"
-						className="py-24 px-6 relative overflow-hidden"
+						className="relative scroll-mt-24 overflow-hidden px-6 py-24"
 					>
 						<div className="max-w-7xl mx-auto">
 							<motion.div
 								initial="hidden"
 								whileInView="visible"
-								viewport={{ once: false, margin: '-50px' }}
-								variants={fadeIn}
+								viewport={VIEWPORT}
+								variants={fadeUp}
 								className="text-center mb-16"
 							>
 								<h2 className="text-4xl md:text-5xl font-bold mb-4 running-gradient inline-block">
@@ -551,24 +555,27 @@ function App() {
 							<motion.div
 								initial="hidden"
 								whileInView="visible"
-								viewport={{ once: false, margin: '-50px' }}
-								variants={{
-									hidden: {},
-									visible: { transition: { staggerChildren: 0.1 } },
-								}}
+								viewport={VIEWPORT}
+								variants={staggerContainer(0.09)}
 								className="grid md:grid-cols-3 gap-6"
 							>
-								{getBlogPosts().map((post) => (
+								{getBlogPosts().slice(0, 3).map((post) => (
 									<motion.a
 										key={post.slug}
-										href={post.path}
-										whileHover={{ y: -6 }}
-										variants={{
-											hidden: { opacity: 0, y: 20 },
-											visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-										}}
-										style={{ '--hover-color': post.hoverColor }} className="group rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all hover-glow"
+										href={post.path || `/blog/${post.slug}/`}
+										whileHover={hoverLift}
+										onPointerMove={handleSpotlight}
+										variants={staggerItem}
+										style={{ '--hover-color': post.hoverColor }}
+										className="spotlight glass-card group flex flex-col rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all hover-glow"
 									>
+										<span
+											aria-hidden="true"
+											className="pointer-events-none absolute inset-x-6 top-0 h-px opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+											style={{
+												backgroundImage: `linear-gradient(90deg, transparent, ${post.hoverColor || '#bfa8ff'}, transparent)`,
+											}}
+										/>
 										<div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.25em] text-primary">
 											<span>{post.category}</span>
 											<span className="text-gray-300">{post.readingTime}</span>
@@ -580,7 +587,7 @@ function App() {
 											{post.excerpt}
 										</p>
 										<div className="mt-5 flex flex-wrap gap-2">
-											{post.tags.map((tag) => (
+											{(post.tags || []).map((tag) => (
 												<span
 													key={tag}
 													className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-300"
@@ -589,8 +596,12 @@ function App() {
 												</span>
 											))}
 										</div>
-										<div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-white group-hover:text-primary">
-											Read article <ArrowRight size={16} />
+										<div className="mt-auto inline-flex items-center gap-2 pt-6 text-sm font-semibold text-white group-hover:text-primary">
+											Read article
+											<ArrowRight
+												size={16}
+												className="transition-transform duration-300 group-hover:translate-x-1"
+											/>
 										</div>
 									</motion.a>
 								))}
@@ -601,17 +612,18 @@ function App() {
 					{/* Footer / Contact Section */}
 					<footer
 						id="contact"
-						className="relative isolate pt-20 pb-8 overflow-hidden bg-gradient-to-b from-dark/60 via-dark/80 to-dark"
+						className="relative isolate scroll-mt-24 overflow-hidden bg-gradient-to-b from-dark/60 via-dark/80 to-dark px-6 pb-8 pt-24"
 					>
 						<div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-						<div className="max-w-6xl mx-auto px-6 relative z-10">
+						<div className="max-w-7xl mx-auto relative z-10">
 							<div className="grid md:grid-cols-2 gap-12 mb-16">
 								{/* Left Side: Contact Info */}
 								<motion.div
-									initial={{ opacity: 0, y: 20 }}
-									whileInView={{ opacity: 1, y: 0 }}
-									viewport={{ once: false, margin: '-50px' }}
+									initial="hidden"
+									whileInView="visible"
+									viewport={VIEWPORT}
+									variants={fadeUp}
 									className="space-y-8"
 								>
 									<div>
@@ -627,7 +639,7 @@ function App() {
 
 									<div className="space-y-4">
 										<a
-											href="mailto:kishoc2000@gmail.com"
+											href="mailto:kishorc2000@gmail.com"
 											className="flex items-center gap-4 text-gray-300 hover:text-primary transition-all group rounded-xl"
 										>
 											<div style={{ '--hover-color': '#f43f5e' }} className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary/30 transition-colors hover-glow">
@@ -644,7 +656,13 @@ function App() {
 									</div>
 
 									{/* Social Icons */}
-									<div className="flex gap-3">
+									<motion.div
+										initial="hidden"
+										whileInView="visible"
+										viewport={VIEWPORT}
+										variants={staggerContainer(0.06)}
+										className="flex gap-3"
+									>
 										{[
 											{
 												href: 'https://github.com/Kishor0513',
@@ -676,27 +694,38 @@ function App() {
 												href={social.href}
 												target="_blank"
 												rel="noopener noreferrer"
-												whileHover={{ scale: 1.1, y: -2 }}
+												whileHover={{ scale: 1.08, y: -2 }}
+												variants={staggerItem}
+												transition={{
+													type: 'spring',
+													stiffness: 300,
+													damping: 20,
+												}}
 												style={{ '--hover-color': social.hoverColor }}
 												className="w-12 h-12 flex items-center justify-center glass-panel rounded-xl border border-white/10 text-gray-400 hover:text-primary transition-all"
 												title={social.label}
+												aria-label={social.label}
 											>
-												<social.icon size={20} />
+												<social.icon size={20} aria-hidden="true" />
 											</motion.a>
 										))}
-									</div>
+									</motion.div>
 								</motion.div>
 
 								{/* Right Side: Contact Form */}
 								<motion.div
-									initial={{ opacity: 0, y: 20 }}
-									whileInView={{ opacity: 1, y: 0 }}
-									viewport={{ once: false, margin: '-50px' }}
-									transition={{ delay: 0.1 }}
+									initial="hidden"
+									whileInView="visible"
+									viewport={VIEWPORT}
+									variants={fadeUp}
 									className="relative group"
 								>
 									<div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-secondary/30 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
-									<div style={{ '--hover-color': '#c084fc' }} className="relative p-6 md:p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md hover-glow">
+									<div
+										onPointerMove={handleSpotlight}
+										style={{ '--hover-color': '#c084fc' }}
+										className="spotlight relative p-6 md:p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md hover-glow"
+									>
 										<h3 className="text-xl font-bold text-white mb-6">
 											Send a Message
 										</h3>
@@ -734,8 +763,9 @@ function App() {
 													<input
 														type="text"
 														name="user_name"
+														autoComplete="name"
 														required
-														className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+														className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 														placeholder="Your Name"
 													/>
 												</label>
@@ -744,8 +774,9 @@ function App() {
 													<input
 														type="email"
 														name="user_email"
+														autoComplete="email"
 														required
-														className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+														className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 														placeholder="Your Email"
 													/>
 												</label>
@@ -756,7 +787,7 @@ function App() {
 													name="message"
 													required
 													rows="3"
-													className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+													className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 													placeholder="Your Message"
 												/>
 											</label>
@@ -764,6 +795,7 @@ function App() {
 											<AnimatePresence>
 												{submitStatus === 'success' && (
 													<motion.p
+														role="status"
 														initial={{ opacity: 0, y: -10 }}
 														animate={{ opacity: 1, y: 0 }}
 														className="text-green-400 text-sm font-medium text-center"
@@ -773,6 +805,7 @@ function App() {
 												)}
 												{submitStatus === 'error' && (
 													<motion.p
+														role="alert"
 														initial={{ opacity: 0, y: -10 }}
 														animate={{ opacity: 1, y: 0 }}
 														className="text-red-400 text-sm font-medium text-center"
@@ -785,11 +818,12 @@ function App() {
 											<button
 												type="submit"
 												disabled={isSending}
-												style={{ '--hover-color': '#14b8a6' }} className="w-full py-3.5 font-bold text-sm text-white bg-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all hover-glow flex items-center justify-center gap-2 disabled:opacity-50"
+												aria-busy={isSending}
+												style={{ '--hover-color': '#14b8a6' }} className="w-full py-3.5 font-bold text-sm text-dark bg-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all hover-glow flex items-center justify-center gap-2 disabled:opacity-50"
 											>
 												{isSending ? (
 													<>
-														<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+														<div className="w-4 h-4 border-2 border-dark/30 border-t-dark rounded-full animate-spin" />
 														SENDING
 													</>
 												) : (
@@ -803,7 +837,7 @@ function App() {
 
 							{/* Bottom Bar */}
 							<div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/5">
-								<p className="text-gray-500 text-sm">
+								<p className="text-sm text-gray-400">
 									© {new Date().getFullYear()} Kishor Chaudhary. All rights
 									reserved.
 								</p>

@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: dark;
+    /* Sections carry their own scroll-mt-* offset, so a document-level
+       scroll padding here would stack and land anchors twice as far down. */
+    position: relative;
+  }
+
   body {
     @apply bg-dark text-white overflow-x-hidden font-sans;
     background-image:
@@ -44,7 +51,10 @@
   }
 }
 
-/* Premium Glass Effects */
+/* Premium Glass Effects
+   Kept in the components layer so Tailwind utilities (bg-*, rounded-*,
+   border-*) can override these defaults when a component needs them. */
+@layer components {
 .ios-glass {
   background: rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(24px) saturate(200%);
@@ -77,11 +87,50 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+/* Pointer-tracked light on glass cards. The glow is painted by CSS behind
+   the card content, so moving the pointer never triggers a React render. */
+.spotlight {
+  isolation: isolate;
+}
+
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  background: radial-gradient(
+    360px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(255, 255, 255, 0.09),
+    transparent 65%
+  );
+  transition: opacity 0.4s ease;
+}
+
+.spotlight:hover::before {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .spotlight::before {
+    display: none;
+  }
+}
+
 .hover-glow:hover {
   border-color: transparent;
   box-shadow:
     0 0 0 1px var(--hover-color, #bfa8ff),
     0 0 20px -4px var(--hover-color, #bfa8ff);
+}
+
+/* Skill cards reuse the standard card shell; only the heading picks up the
+   group's own accent on hover, keeping each card distinct without breaking
+   the site-wide type and surface language. */
+.skill-card:hover h3 {
+  color: var(--hover-color, #bfa8ff);
 }
 
 .glass-panel {
@@ -121,6 +170,60 @@
 
 .liquid-glass:hover::after {
   animation: shimmer 1.2s ease-in-out;
+}
+
+/* Article / editor body copy */
+.rich-text h2 {
+  @apply mt-10 mb-3 text-2xl font-bold tracking-tight text-white md:text-3xl;
+}
+
+.rich-text h3 {
+  @apply mt-8 mb-2 text-xl font-semibold text-white;
+}
+
+.rich-text p {
+  @apply mb-4 leading-relaxed text-gray-300;
+}
+
+.rich-text ul {
+  @apply mb-5 list-disc space-y-2 pl-5;
+}
+
+.rich-text ol {
+  @apply mb-5 list-decimal space-y-2 pl-5;
+}
+
+.rich-text li {
+  @apply leading-relaxed text-gray-300;
+}
+
+.rich-text li::marker {
+  color: #bfa8ff;
+}
+
+.rich-text strong {
+  @apply font-semibold text-white;
+}
+
+.rich-text em {
+  @apply italic;
+}
+
+.rich-text code {
+  @apply rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.85em] text-primary;
+}
+
+.rich-text a {
+  @apply text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:decoration-primary;
+}
+
+.rich-text blockquote {
+  @apply mb-5 border-l-2 border-primary/40 pl-4 italic text-gray-300;
+}
+
+.rich-text > section > h2:first-child {
+  @apply mt-0;
+}
 }
 
 @keyframes shimmer {
@@ -344,6 +447,10 @@ html {
 
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {

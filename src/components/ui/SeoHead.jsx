@@ -60,21 +60,26 @@ const SeoHead = ({
 		ensureMetaTag('meta[property="og:image"]', {
 			property: 'og:image',
 		}).setAttribute('content', image);
-		ensureMetaTag('meta[name="twitter:card"]', {
-			name: 'twitter:card',
-		}).setAttribute('content', twitterCard);
-		ensureMetaTag('meta[property="twitter:url"]', {
-			property: 'twitter:url',
-		}).setAttribute('content', canonicalUrl);
-		ensureMetaTag('meta[property="twitter:title"]', {
-			property: 'twitter:title',
-		}).setAttribute('content', title);
-		ensureMetaTag('meta[property="twitter:description"]', {
-			property: 'twitter:description',
-		}).setAttribute('content', description);
-		ensureMetaTag('meta[property="twitter:image"]', {
-			property: 'twitter:image',
-		}).setAttribute('content', image);
+		ensureMetaTag(
+			'meta[name="twitter:card"], meta[property="twitter:card"]',
+			{ name: 'twitter:card' },
+		).setAttribute('content', twitterCard);
+		ensureMetaTag(
+			'meta[name="twitter:url"], meta[property="twitter:url"]',
+			{ name: 'twitter:url' },
+		).setAttribute('content', canonicalUrl);
+		ensureMetaTag(
+			'meta[name="twitter:title"], meta[property="twitter:title"]',
+			{ name: 'twitter:title' },
+		).setAttribute('content', title);
+		ensureMetaTag(
+			'meta[name="twitter:description"], meta[property="twitter:description"]',
+			{ name: 'twitter:description' },
+		).setAttribute('content', description);
+		ensureMetaTag(
+			'meta[name="twitter:image"], meta[property="twitter:image"]',
+			{ name: 'twitter:image' },
+		).setAttribute('content', image);
 		ensureLinkTag('link[rel="canonical"]', { rel: 'canonical' }).setAttribute(
 			'href',
 			canonicalUrl,
@@ -87,7 +92,15 @@ const SeoHead = ({
 			previousJsonLd.remove();
 		}
 
-		if (jsonLd) {
+		// Static JSON-LD is injected at build time for known article URLs.
+		// Avoid adding a second, conflicting graph at runtime.
+		const hasStaticJsonLd = Boolean(
+			document.head.querySelector(
+				'script[type="application/ld+json"]:not([data-seo-jsonld="true"])',
+			),
+		);
+
+		if (jsonLd && !hasStaticJsonLd) {
 			const script = document.createElement('script');
 			script.type = 'application/ld+json';
 			script.setAttribute('data-seo-jsonld', 'true');

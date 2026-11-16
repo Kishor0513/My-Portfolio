@@ -9,8 +9,8 @@ import {
 	updatePost,
 } from '../../data/blogStorage';
 
-const ADMIN_PASSWORD =
-	import.meta.env.VITE_ADMIN_PASSWORD || 'Fenshika@0513';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
+const ADMIN_CONFIGURED = Boolean(ADMIN_PASSWORD);
 
 const Admin = () => {
 	const [authed, setAuthed] = useState(() => sessionStorage.getItem('kishor_admin') === 'true');
@@ -26,6 +26,10 @@ const Admin = () => {
 
 	const handleLogin = (e) => {
 		e.preventDefault();
+		if (!ADMIN_CONFIGURED) {
+			setError('Admin password is not configured. Set VITE_ADMIN_PASSWORD and rebuild.');
+			return;
+		}
 		if (password === ADMIN_PASSWORD) {
 			sessionStorage.setItem('kishor_admin', 'true');
 			setAuthed(true);
@@ -65,16 +69,24 @@ const Admin = () => {
 									value={password}
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="Password"
-									className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+									autoComplete="current-password"
+									disabled={!ADMIN_CONFIGURED}
+									className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 disabled:opacity-50"
 									autoFocus
 								/>
 							</div>
+							{!ADMIN_CONFIGURED && (
+								<p className="text-amber-300 text-xs text-center">
+									Set VITE_ADMIN_PASSWORD to enable sign in.
+								</p>
+							)}
 							{error && (
-								<p className="text-red-400 text-sm text-center">{error}</p>
+								<p role="alert" className="text-red-400 text-sm text-center">{error}</p>
 							)}
 							<button
 								type="submit"
-								className="w-full py-3 font-bold text-sm text-white bg-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+								disabled={!ADMIN_CONFIGURED}
+								className="w-full py-3 font-bold text-sm text-dark bg-primary rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
 							>
 								Sign In
 							</button>
@@ -171,7 +183,7 @@ const Dashboard = ({ posts, onNew, onEdit, onDelete, onLogout }) => {
 						</button>
 						<button
 							onClick={onNew}
-							className="px-5 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:scale-[1.02] transition-all flex items-center gap-2"
+							className="px-5 py-2.5 text-sm font-bold text-dark bg-primary rounded-xl hover:scale-[1.02] transition-all flex items-center gap-2"
 						>
 							<Plus size={16} /> New Post
 						</button>
@@ -199,12 +211,12 @@ const Dashboard = ({ posts, onNew, onEdit, onDelete, onLogout }) => {
 							value={importData}
 							onChange={(e) => setImportData(e.target.value)}
 							rows={6}
-							className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 font-mono"
+							className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 font-mono"
 							placeholder='[{"slug": "my-post", "title": "My Post", ...}]'
 						/>
 						<button
 							onClick={handleImport}
-							className="mt-3 px-5 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:scale-[1.02] transition-all"
+							className="mt-3 px-5 py-2.5 text-sm font-bold text-dark bg-primary rounded-xl hover:scale-[1.02] transition-all"
 						>
 							Import
 						</button>
@@ -213,10 +225,10 @@ const Dashboard = ({ posts, onNew, onEdit, onDelete, onLogout }) => {
 
 				{posts.length === 0 ? (
 					<div className="text-center py-20">
-						<p className="text-gray-500 text-lg">No posts yet.</p>
+						<p className="text-gray-400 text-lg">No posts yet.</p>
 						<button
 							onClick={onNew}
-							className="mt-4 px-6 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
+							className="mt-4 px-6 py-3 text-sm font-bold text-dark bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
 						>
 							<Plus size={16} /> Create your first post
 						</button>
@@ -239,11 +251,11 @@ const Dashboard = ({ posts, onNew, onEdit, onDelete, onLogout }) => {
 									<h3 className="font-semibold text-white truncate">
 										{post.title}
 									</h3>
-									<p className="text-xs text-gray-500 mt-0.5">
+									<p className="text-xs text-gray-400 mt-0.5">
 										{post.category} &middot; {post.readingTime} &middot; {post.publishedAt}
 									</p>
 								</div>
-								<div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+								<div className="flex items-center gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
 									<a
 										href={post.path}
 										target="_blank"
@@ -512,7 +524,7 @@ const PostEditor = ({ post, onBack }) => {
 						)}
 						<button
 							onClick={handleSave}
-							className="px-5 py-2.5 text-sm font-bold text-white bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
+							className="px-5 py-2.5 text-sm font-bold text-dark bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
 						>
 							<Save size={16} /> {post ? 'Update' : 'Publish'}
 						</button>
@@ -522,17 +534,17 @@ const PostEditor = ({ post, onBack }) => {
 				<div className="space-y-6">
 					<div className="grid md:grid-cols-2 gap-4">
 						<div className="md:col-span-2">
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Title</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Title</label>
 							<input
 								type="text"
 								value={form.title}
 								onChange={(e) => handleChange('title', e.target.value)}
-								className="w-full px-4 py-3 text-white rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+								className="w-full px-4 py-3 text-white rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 								placeholder="Post title"
 							/>
 						</div>
 						<div>
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Slug</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Slug</label>
 							<input
 								type="text"
 								value={form.slug}
@@ -540,32 +552,32 @@ const PostEditor = ({ post, onBack }) => {
 									const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 									setForm({ ...form, slug, path: `/blog/${slug}/` });
 								}}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 font-mono"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 font-mono"
 								placeholder="my-post-slug"
 							/>
 						</div>
 						<div>
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Category</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Category</label>
 							<input
 								type="text"
 								value={form.category}
 								onChange={(e) => handleChange('category', e.target.value)}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 								placeholder="SEO, Performance, etc."
 							/>
 						</div>
 						<div>
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Reading Time</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Reading Time</label>
 							<input
 								type="text"
 								value={form.readingTime}
 								onChange={(e) => handleChange('readingTime', e.target.value)}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 								placeholder="Auto-calculated"
 							/>
 						</div>
 						<div>
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Published Date</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Published Date</label>
 							<input
 								type="date"
 								value={form.publishedAt}
@@ -574,7 +586,7 @@ const PostEditor = ({ post, onBack }) => {
 							/>
 						</div>
 						<div>
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Hover Color</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Hover Color</label>
 							<div className="flex items-center gap-3">
 								<input
 									type="color"
@@ -586,12 +598,12 @@ const PostEditor = ({ post, onBack }) => {
 									type="text"
 									value={form.hoverColor}
 									onChange={(e) => handleChange('hoverColor', e.target.value)}
-									className="flex-1 px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 font-mono"
+									className="flex-1 px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 font-mono"
 								/>
 							</div>
 						</div>
 						<div className="md:col-span-2">
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Tags</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Tags</label>
 							<div className="flex flex-wrap gap-2 mb-2">
 								{form.tags.map((tag) => (
 									<span
@@ -621,37 +633,37 @@ const PostEditor = ({ post, onBack }) => {
 										removeTag(form.tags[form.tags.length - 1]);
 									}
 								}}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 								placeholder="Type a tag and press comma or Enter"
 							/>
 						</div>
 						<div className="md:col-span-2">
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Description (meta / SEO)</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Description (meta / SEO)</label>
 							<textarea
 								value={form.description}
 								onChange={(e) => handleChange('description', e.target.value)}
 								rows={2}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 								placeholder="Short description for SEO and card previews"
 							/>
 						</div>
 						<div className="md:col-span-2">
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Excerpt (card preview)</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Excerpt (card preview)</label>
 							<textarea
 								value={form.excerpt}
 								onChange={(e) => handleChange('excerpt', e.target.value)}
 								rows={2}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 								placeholder="Shown on blog cards"
 							/>
 						</div>
 						<div className="md:col-span-2">
-							<label className="block text-xs uppercase tracking-wider text-gray-500 mb-1.5 font-semibold">Hero Text</label>
+							<label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">Hero Text</label>
 							<textarea
 								value={form.hero}
 								onChange={(e) => handleChange('hero', e.target.value)}
 								rows={2}
-								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+								className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 								placeholder="Hero quote shown at the top of the article"
 							/>
 						</div>
@@ -664,13 +676,13 @@ const PostEditor = ({ post, onBack }) => {
 								<div className="flex rounded-xl border border-white/10 overflow-hidden">
 									<button
 										onClick={() => setContentMode('simple')}
-										className={`px-4 py-1.5 text-xs font-semibold transition-all ${contentMode === 'simple' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
+										className={`px-4 py-1.5 text-xs font-semibold transition-all ${contentMode === 'simple' ? 'bg-primary text-dark' : 'text-gray-400 hover:text-white'}`}
 									>
 										Simple
 									</button>
 									<button
 										onClick={() => setContentMode('structured')}
-										className={`px-4 py-1.5 text-xs font-semibold transition-all ${contentMode === 'structured' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
+										className={`px-4 py-1.5 text-xs font-semibold transition-all ${contentMode === 'structured' ? 'bg-primary text-dark' : 'text-gray-400 hover:text-white'}`}
 									>
 										Structured
 									</button>
@@ -688,7 +700,7 @@ const PostEditor = ({ post, onBack }) => {
 
 						{contentMode === 'simple' ? (
 							<div>
-								<p className="text-xs text-gray-500 mb-3">
+								<p className="text-xs text-gray-400 mb-3">
 									Format with toolbar buttons or type directly. See live preview below.
 								</p>
 								<div className="flex items-center gap-1 mb-2 p-1.5 rounded-xl bg-white/[0.03] border border-white/10 w-fit">
@@ -718,14 +730,14 @@ const PostEditor = ({ post, onBack }) => {
 									value={simpleContent}
 									onChange={(e) => setSimpleContent(e.target.value)}
 									rows={16}
-									className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none font-mono leading-relaxed"
+									className="w-full px-4 py-3 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none font-mono leading-relaxed"
 									placeholder="## Section Heading&#10;&#10;Paragraph text here...&#10;&#10;Another paragraph...&#10;&#10;- bullet one&#10;- bullet two&#10;&#10;---&#10;&#10;## Next Section&#10;&#10;More content..."
 								/>
 								{simpleContent.trim() && (
 									<div className="mt-4 p-5 rounded-xl bg-white/[0.02] border border-white/5">
-										<p className="text-xs uppercase tracking-wider text-gray-500 mb-3 font-semibold">Preview</p>
+										<p className="text-xs uppercase tracking-wider text-gray-400 mb-3 font-semibold">Preview</p>
 										<div
-											className="prose prose-invert max-w-none"
+											className="rich-text max-w-none"
 											dangerouslySetInnerHTML={{ __html: renderPreview(simpleContent) }}
 										/>
 									</div>
@@ -739,13 +751,13 @@ const PostEditor = ({ post, onBack }) => {
 										className="mb-6 p-5 rounded-2xl border border-white/10 bg-white/[0.03]"
 									>
 										<div className="flex items-center justify-between mb-4">
-											<span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+											<span className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
 												Section {idx + 1}
 											</span>
 											{form.sections.length > 1 && (
 												<button
 													onClick={() => removeSection(idx)}
-													className="text-gray-500 hover:text-red-400 transition-colors"
+													className="text-gray-400 hover:text-red-400 transition-colors"
 												>
 													<X size={16} />
 												</button>
@@ -753,32 +765,32 @@ const PostEditor = ({ post, onBack }) => {
 										</div>
 										<div className="space-y-4">
 											<div>
-												<label className="block text-xs text-gray-500 mb-1">Heading</label>
+												<label className="block text-xs text-gray-400 mb-1">Heading</label>
 												<input
 													type="text"
 													value={section.heading}
 													onChange={(e) => handleSectionChange(idx, 'heading', e.target.value)}
-													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500"
+													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400"
 													placeholder="Section heading"
 												/>
 											</div>
 											<div>
-												<label className="block text-xs text-gray-500 mb-1">Paragraphs (one per line)</label>
+												<label className="block text-xs text-gray-400 mb-1">Paragraphs (one per line)</label>
 												<textarea
 													value={section.paragraphs.join('\n')}
 													onChange={(e) => handleSectionChange(idx, 'paragraphs', e.target.value.split('\n'))}
 													rows={3}
-													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 													placeholder="Paragraph text..."
 												/>
 											</div>
 											<div>
-												<label className="block text-xs text-gray-500 mb-1">Bullets (one per line)</label>
+												<label className="block text-xs text-gray-400 mb-1">Bullets (one per line)</label>
 												<textarea
 													value={section.bullets.join('\n')}
 													onChange={(e) => handleSectionChange(idx, 'bullets', e.target.value.split('\n'))}
 													rows={2}
-													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-500 resize-none"
+													className="w-full px-4 py-2.5 text-white text-sm rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-primary/50 transition-all placeholder-gray-400 resize-none"
 													placeholder="Bullet point..."
 												/>
 											</div>
@@ -799,7 +811,7 @@ const PostEditor = ({ post, onBack }) => {
 					</button>
 					<button
 						onClick={handleSave}
-						className="px-6 py-3 text-sm font-bold text-white bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
+						className="px-6 py-3 text-sm font-bold text-dark bg-primary rounded-xl hover:scale-[1.02] transition-all inline-flex items-center gap-2"
 					>
 						<Save size={16} /> {post ? 'Update Post' : 'Publish Post'}
 					</button>

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import {
   SiReact, SiNodedotjs, SiTypescript, SiMongodb, SiPostgresql,
@@ -61,7 +62,13 @@ const FloatingTechIcons = ({ className = '' }) => {
   }, []);
 
   return (
-    <div className={`absolute inset-0 w-full h-full overflow-hidden pointer-events-none ${className}`}>
+    <motion.div
+      aria-hidden="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1.1, delay: 0.4, ease: 'easeOut' }}
+      className={`absolute inset-0 w-full h-full overflow-hidden pointer-events-none ${className}`}
+    >
       {icons.map(({ id, Icon, color, x, y, size, duration, animIdx }) => (
         <div
           key={id}
@@ -90,6 +97,8 @@ const FloatingTechIcons = ({ className = '' }) => {
         >
           <Icon
             size={size}
+            aria-hidden="true"
+            focusable="false"
             style={{
               color: 'rgba(255,255,255,0.3)',
               transition: 'color 0.3s, filter 0.3s, transform 0.3s',
@@ -105,7 +114,7 @@ const FloatingTechIcons = ({ className = '' }) => {
           return `@keyframes fi-drift-${i}{0%,100%{transform:translate(0,0)}50%{transform:translate(${tx}px,${ty}px)}}`;
         }).join('')}
       `}</style>
-    </div>
+    </motion.div>
   );
 };
 

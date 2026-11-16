@@ -6,19 +6,37 @@ import {
 } from '../../data/blogPosts';
 import { getBlogPosts, getPostBySlug } from '../../data/blogStorage';
 import { buildAbsoluteUrl, SITE_NAME } from '../../data/site';
+import {
+	EASE_OUT,
+	hoverLift,
+	staggerContainer,
+	staggerItem,
+	VIEWPORT,
+} from '../../lib/motion';
+import useSpotlight from '../../lib/useSpotlight';
+import NotFoundPage from '../ui/NotFoundPage';
+import ScrollProgress from '../ui/ScrollProgress';
 import SeoHead from '../ui/SeoHead';
 
 const pageFade = {
 	hidden: { opacity: 0, y: 16 },
-	visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
+	visible: {
+		opacity: 1,
+		y: 0,
+		transition: { duration: 0.45, ease: EASE_OUT },
+	},
 };
 
-const formatDate = (value) =>
-	new Intl.DateTimeFormat('en', {
+const formatDate = (value) => {
+	const date = value ? new Date(value) : null;
+	if (!date || Number.isNaN(date.getTime())) return 'Draft';
+
+	return new Intl.DateTimeFormat('en', {
 		month: 'short',
 		day: 'numeric',
 		year: 'numeric',
-	}).format(new Date(value));
+	}).format(date);
+};
 
 const renderText = (text) => {
 	if (!text) return text;
@@ -57,7 +75,14 @@ const BlogHeader = () => (
 );
 
 const BlogShell = ({ children }) => (
-	<div className="min-h-screen bg-dark text-white selection:bg-primary/30">
+	<div className="min-h-svh bg-dark text-white selection:bg-primary/30">
+		<ScrollProgress />
+		<a
+			href="#main-content"
+			className="absolute left-4 top-4 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-2 text-sm font-bold text-dark transition-transform focus:translate-y-0"
+		>
+			Skip to content
+		</a>
 		<div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(236,72,153,0.1),transparent_24%),linear-gradient(180deg,#14081f_0%,#0f0518_48%,#09030f_100%)]" />
 		<div className="relative z-10">
 			<BlogHeader />
@@ -68,6 +93,7 @@ const BlogShell = ({ children }) => (
 
 export const BlogIndexPage = ({ posts = getBlogPosts() }) => {
 	const postsToRender = posts;
+	const { onPointerMove } = useSpotlight();
 	const title = `${SITE_NAME} Blog | SEO, React, and Portfolio Notes`;
 	const description =
 		'A lightweight blog covering SEO, sitemap strategy, React portfolio planning, and performance notes from the Kishor Chaudhary site.';
@@ -88,7 +114,7 @@ export const BlogIndexPage = ({ posts = getBlogPosts() }) => {
 					description,
 				}}
 			/>
-			<main className="mx-auto max-w-6xl px-6 py-16 lg:py-20">
+			<main id="main-content" className="mx-auto max-w-6xl px-6 py-16 lg:py-20">
 				<motion.section
 					initial="hidden"
 					animate="visible"
@@ -122,21 +148,27 @@ export const BlogIndexPage = ({ posts = getBlogPosts() }) => {
 				</motion.section>
 
 				<div className="flex items-center justify-between mb-8">
-					<p className="text-sm text-gray-500">
+					<p className="text-sm text-gray-400">
 						<span className="text-primary font-semibold">{postsToRender.length}</span>{' '}
 						{postsToRender.length === 1 ? 'article' : 'articles'}
 					</p>
 				</div>
 
-				<section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-					{postsToRender.map((post, index) => (
+				<motion.section
+					initial="hidden"
+					whileInView="visible"
+					viewport={VIEWPORT}
+					variants={staggerContainer(0.07)}
+					className="grid gap-6 md:grid-cols-2 xl:grid-cols-3"
+				>
+					{postsToRender.map((post) => (
 						<motion.article
 							key={post.slug}
-							initial={{ opacity: 0, y: 24 }}
-							whileInView={{ opacity: 1, y: 0 }}
-							viewport={{ once: true }}
-							transition={{ delay: index * 0.08 }}
-							style={{ '--hover-color': post.hoverColor }} className="group flex h-full flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover-glow"
+							variants={staggerItem}
+							whileHover={hoverLift}
+							onPointerMove={onPointerMove}
+							style={{ '--hover-color': post.hoverColor }}
+							className="spotlight glass-card group relative flex h-full flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/5 backdrop-blur-xl transition-all duration-300 hover-glow"
 						>
 							<div className="flex-1 p-6">
 								<div className="flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-primary">
@@ -172,7 +204,7 @@ export const BlogIndexPage = ({ posts = getBlogPosts() }) => {
 									</span>
 								</div>
 								<a
-									href={post.path}
+									href={post.path || `/blog/${post.slug}/`}
 									className="mt-5 inline-flex items-center gap-2 font-semibold text-primary transition-transform duration-300 group-hover:translate-x-1"
 								>
 									Read article{' '}
@@ -184,7 +216,7 @@ export const BlogIndexPage = ({ posts = getBlogPosts() }) => {
 							</div>
 						</motion.article>
 					))}
-				</section>
+				</motion.section>
 			</main>
 		</BlogShell>
 	);
@@ -195,10 +227,11 @@ export const BlogPostPage = ({ post, posts = getBlogPosts() }) => {
 	const allPosts = posts;
 
 	if (!currentPost) {
-		return <BlogIndexPage posts={allPosts} />;
+		return <NotFoundPage />;
 	}
 
-	const canonicalUrl = buildAbsoluteUrl(currentPost.path);
+	const postPath = currentPost.path || `/blog/${currentPost.slug}/`;
+	const canonicalUrl = buildAbsoluteUrl(postPath);
 	const title = `${currentPost.title} | ${SITE_NAME}`;
 	const description = currentPost.description;
 	const relatedPosts = allPosts
@@ -240,7 +273,7 @@ export const BlogPostPage = ({ post, posts = getBlogPosts() }) => {
 					buildBlogArticleJsonLd(currentPost),
 				]}
 			/>
-			<main className="mx-auto max-w-4xl px-6 py-14 lg:py-20">
+			<main id="main-content" className="mx-auto max-w-4xl px-6 py-14 lg:py-20">
 				<motion.a
 					href={blogIndexPath}
 					initial={{ opacity: 0, x: -10 }}
@@ -282,17 +315,23 @@ export const BlogPostPage = ({ post, posts = getBlogPosts() }) => {
 						{currentPost.hero}
 					</div>
 
-					<div className="mt-10 space-y-10 prose prose-invert max-w-none">
-						{currentPost.sections.map((section) => (
-							<section key={section.heading}>
-								<h2>{section.heading}</h2>
-								{section.paragraphs.map((paragraph) => (
-									<p key={paragraph} dangerouslySetInnerHTML={{ __html: renderText(paragraph) }} />
+					<div className="rich-text mt-10 max-w-none space-y-10">
+						{(currentPost.sections || []).map((section, sectionIndex) => (
+							<section key={`${section.heading}-${sectionIndex}`}>
+								{section.heading && <h2>{section.heading}</h2>}
+								{(section.paragraphs || []).map((paragraph, paragraphIndex) => (
+									<p
+										key={paragraphIndex}
+										dangerouslySetInnerHTML={{ __html: renderText(paragraph) }}
+									/>
 								))}
 								{section.bullets?.length > 0 && (
 									<ul>
-										{section.bullets.map((bullet) => (
-											<li key={bullet} dangerouslySetInnerHTML={{ __html: renderText(bullet) }} />
+										{section.bullets.map((bullet, bulletIndex) => (
+											<li
+												key={bulletIndex}
+												dangerouslySetInnerHTML={{ __html: renderText(bullet) }}
+											/>
 										))}
 									</ul>
 								)}
@@ -301,23 +340,32 @@ export const BlogPostPage = ({ post, posts = getBlogPosts() }) => {
 					</div>
 
 					<div className="mt-12 border-t border-white/10 pt-8">
-						<p className="text-sm uppercase tracking-[0.3em] text-gray-500">
+						<p className="text-sm uppercase tracking-[0.3em] text-gray-400">
 							Related articles
 						</p>
-						<div className="mt-5 grid gap-4 md:grid-cols-3">
+						<motion.div
+							initial="hidden"
+							whileInView="visible"
+							viewport={VIEWPORT}
+							variants={staggerContainer(0.06)}
+							className="mt-5 grid gap-4 md:grid-cols-3"
+						>
 							{relatedPosts.map((relatedPost) => (
-								<a
+								<motion.a
 									key={relatedPost.slug}
-									href={relatedPost.path}
-									style={{ '--hover-color': relatedPost.hoverColor }} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all hover-glow hover:bg-white/10"
+									href={relatedPost.path || `/blog/${relatedPost.slug}/`}
+									variants={staggerItem}
+									whileHover={hoverLift}
+									style={{ '--hover-color': relatedPost.hoverColor }}
+									className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all hover-glow hover:bg-white/10"
 								>
 									<p className="text-sm text-primary">{relatedPost.category}</p>
 									<h3 className="mt-2 font-semibold text-white">
 										{relatedPost.title}
 									</h3>
-								</a>
+								</motion.a>
 							))}
-						</div>
+						</motion.div>
 					</div>
 
 					<motion.a
