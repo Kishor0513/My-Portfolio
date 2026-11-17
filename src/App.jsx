@@ -23,7 +23,6 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import Navbar from './components/ui/Navbar';
 import NotFoundPage from './components/ui/NotFoundPage';
-import ScrollProgress from './components/ui/ScrollProgress';
 import DemoWindow from './components/projects/DemoWindow';
 import { PROJECTS } from './data/projects';
 import { getBlogPosts } from './data/blogStorage';
@@ -225,7 +224,6 @@ function App() {
 
 	return (
 		<ErrorBoundary>
-			<ScrollProgress />
 			<a
 				href="#main-content"
 				className="absolute left-4 top-4 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-2 text-sm font-bold text-dark transition-transform focus:translate-y-0"

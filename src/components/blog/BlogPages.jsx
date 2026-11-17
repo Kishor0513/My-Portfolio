@@ -15,7 +15,6 @@ import {
 } from '../../lib/motion';
 import useSpotlight from '../../lib/useSpotlight';
 import NotFoundPage from '../ui/NotFoundPage';
-import ScrollProgress from '../ui/ScrollProgress';
 import SeoHead from '../ui/SeoHead';
 
 const pageFade = {
@@ -76,7 +75,6 @@ const BlogHeader = () => (
 
 const BlogShell = ({ children }) => (
 	<div className="min-h-svh bg-dark text-white selection:bg-primary/30">
-		<ScrollProgress />
 		<a
 			href="#main-content"
 			className="absolute left-4 top-4 z-[100] -translate-y-24 rounded-full bg-primary px-4 py-2 text-sm font-bold text-dark transition-transform focus:translate-y-0"
