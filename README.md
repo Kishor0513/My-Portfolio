@@ -105,13 +105,8 @@ All `VITE_*` values are embedded in the client bundle at build time — never pu
 │   └── main.jsx                # Entry point and service worker setup
 ├── public/                     # Static assets, manifest, sitemap, service worker
 ├── scripts/inject-jsonld.mjs   # Post-build structured-data injection
-├── dist/                       # Production build output
-├── assets/                     # Deployed static assets (GitHub Pages)
-├── admin/                      # Deployed admin page (GitHub Pages)
-├── blog/                       # Deployed blog pages (GitHub Pages)
-├── index.html                  # Deployed root page (GitHub Pages)
-├── CNAME                       # Custom domain
-├── deploy.ps1                  # PowerShell build-and-copy script
+├── .github/workflows/deploy.yml # Builds and publishes dist/ to GitHub Pages
+├── CNAME                       # Custom domain (added to the build on deploy)
 ├── vite.config.js
 ├── tailwind.config.js
 └── eslint.config.js
@@ -127,23 +122,19 @@ Admin edits are per-browser and never written back to the repository. Commit cha
 
 ## Deployment
 
-GitHub Pages serves the repository root, so a deployment builds the site and copies `dist/` to the root. `CNAME` is kept in place for the custom domain.
+Every push to `main` runs `.github/workflows/deploy.yml`: it installs dependencies, runs `npm run build:with-jsonld`, adds `CNAME` to `dist/`, and publishes `dist/` to GitHub Pages. Build output is git-ignored and regenerated in CI, so the repository only holds source.
+
+One-time setup in the repository settings:
+
+1. **Settings → Pages → Build and deployment → Source:** select **GitHub Actions**.
+2. Leave the custom domain configured; the workflow includes `CNAME` in the published artifact.
+
+To build and preview locally:
 
 ```bash
-# Build with structured data for blog pages
 npm run build:with-jsonld
-
-# Replace the deployed artifacts
-rm -rf assets blog admin
-cp -R dist/* .
-
-# Publish
-git add -A
-git commit -m "deploy: ..."
-git push
+npm run preview
 ```
-
-On Windows, `.\deploy.ps1` automates the build and copy steps.
 
 ## Design
 

@@ -116,8 +116,23 @@ out
 .yarn/install-state.gz
 .pnp.*
 
-# Vite
-# dist is deployed to GitHub Pages, so we include it
+# Vite / GitHub Pages build artifacts (published by .github/workflows/deploy.yml)
+/dist/
+/assets/
+/admin/
+/blog/
+/index.html
+/404.html
+/apple-touch-icon.png
+/favicon.png
+/favicon-192.png
+/favicon-512.png
+/favicon.ico
+/favicon.svg
+/manifest.json
+/robots.txt
+/service-worker.js
+/sitemap.xml
 
 # macOS system files
 .DS_Store

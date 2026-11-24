@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://www.kishorchaudhary.com.np/sitemap.xml
